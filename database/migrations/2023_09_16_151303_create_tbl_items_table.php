@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('tbl_items');
         Schema::create('tbl_items', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->engine = 'InnoDB';
+            $table->id('stk_recid');
+            $table->string('stk_serno', 100);
+            $table->string('stk_category', 100);
+            $table->string('stk_description', 500);
+            $table->integer('stk_qty');
+            $table->string('stk_supplier', 200);
         });
     }
 
