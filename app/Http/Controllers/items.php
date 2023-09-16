@@ -37,6 +37,33 @@ class items extends Controller
         }
     }
 
+    function update(Request $req)
+    {
+        try {
+            $valid = Validator::make($req->all(), $this->insertrules() + ['id' => ['required']], $this->globalMessages());
+            if ($valid->fails()) {
+                // dd($valid);
+                return response($valid->messages()->first(), 400);
+            }
+
+            $item = tbl_items::where('stk_recid', $req->id)->first();
+
+            $item->stk_serno = $req->serialno;
+            $item->stk_category = $req->category;
+            $item->stk_description = $req->description;
+            $item->stk_qty = $req->quantity;
+            $item->stk_supplier = $req->supplier;
+
+            $item->save();
+
+
+
+            return response($item, 200);
+        } catch (Throwable  | Exception $ex) {
+            return response('An error has occured.' . $ex->getMessage(), 400);
+        }
+    }
+
     function get(Request $req)
     {
         try {
@@ -65,6 +92,24 @@ class items extends Controller
                 return $obj1;
             });
             return $data;
+        } catch (Throwable  | Exception $ex) {
+            return response('An error has occured.' . $ex->getMessage(), 400);
+        }
+    }
+
+    function delete(Request $req)
+    {
+        try {
+            $valid = Validator::make($req->all(),  ['id' => ['required']], $this->globalMessages());
+            if ($valid->fails()) {
+                // dd($valid);
+                return response($valid->messages()->first(), 400);
+            }
+
+            tbl_items::where('stk_recid', $req->id)->first()->delete();
+
+
+            return response('Deleted Successfully', 200);
         } catch (Throwable  | Exception $ex) {
             return response('An error has occured.' . $ex->getMessage(), 400);
         }

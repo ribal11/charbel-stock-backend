@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\items;
+use App\Http\Controllers\login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -15,8 +16,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::post('auth/login', [login::class, 'login']);
+Route::post('auth/logout', [login::class, 'logout']);
+
 Route::post('items/addItem', [items::class, 'insert']);
+Route::post('items/updateItem', [items::class, 'update']);
 Route::get('items/getItems', [items::class, 'get']);
+Route::get('items/deleteItem', [items::class, 'delete']);
+
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
