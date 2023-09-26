@@ -8,6 +8,7 @@ use App\Models\tbl_items;
 use DateTime;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -131,6 +132,50 @@ class invoice extends Controller
             return response("Saved Successfully", 200);
 
             // return response($item, 200);
+        } catch (Throwable  | Exception $ex) {
+            return response('An error has occured.' . $ex->getMessage(), 400);
+        }
+    }
+
+    function getHeaders(Request $req)
+    {
+        try {
+            // return $req;
+
+            $startDate = $req->strD ? $req->strD : (new DateTime())->format("Y-m-d");
+            $endDate = $req->endD ? $req->endD : (new DateTime())->format("Y-m-d");
+
+
+
+            $startDate = Carbon::createFromFormat('Y-m-d', $startDate)->addYears(-1);
+            $endDate = Carbon::createFromFormat('Y-m-d', $endDate);
+
+            $data = tbl_invoiceheader::select("*")->whereBetween('inh_date', [$startDate, $endDate]);
+
+
+            // return [$data->toSql(), $data->getBindings()];
+            $data = $data->get();
+
+
+            $coll = collect($data);
+            // return $data;
+            // var_dump($coll);
+
+            $data = $coll->map(function (string $val) {
+                $obj = json_decode($val);
+                $obj1 = new stdClass();
+
+                $invdt = Carbon::parse($obj->inh_date);
+
+                $obj1->id = $obj->inh_recid;
+                $obj1->date = $invdt->format('Y-m-d');;
+                $obj1->name = $obj->inh_client;
+                return $obj1;
+            });
+            sleep(0.5);
+            return $data;
+
+            // return $data->toSql();
         } catch (Throwable  | Exception $ex) {
             return response('An error has occured.' . $ex->getMessage(), 400);
         }
