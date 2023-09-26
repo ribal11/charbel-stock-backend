@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\invoice;
 use App\Http\Controllers\items;
 use App\Http\Controllers\login;
 use Illuminate\Http\Request;
@@ -23,6 +24,9 @@ Route::post('items/addItem', [items::class, 'insert']);
 Route::post('items/updateItem', [items::class, 'update']);
 Route::get('items/getItems', [items::class, 'get']);
 Route::get('items/deleteItem', [items::class, 'delete']);
+
+
+Route::post('invoice/upsert', [invoice::class, 'upsert']);
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

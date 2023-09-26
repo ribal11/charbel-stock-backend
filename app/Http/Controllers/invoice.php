@@ -1,0 +1,173 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\tbl_invoicedetails;
+use App\Models\tbl_invoiceheader;
+use App\Models\tbl_items;
+use DateTime;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use stdClass;
+use Throwable;
+
+class invoice extends Controller
+{
+    function upsert(Request $req)
+    {
+        try {
+            // return $req->all();
+            $valid = Validator::make($req->all(), $this->insertrules(), $this->globalMessages());
+            if ($valid->fails()) {
+                // dd($valid);
+                return response($valid->messages()->first(), 400);
+            }
+
+            foreach ($req->items as $k => $v) {
+
+
+                $valid = Validator::make($v, $this->itemdetailsrules(), $this->globalMessages());
+
+                if ($valid->fails()) {
+                    return response($valid->messages()->first(), 400);
+                }
+            }
+
+            //Reduce the array to make sure that no item is repeated multiple times.
+            //So reduce the array
+            $summarizedQtys = collect($req->items)->reduce(function ($carry, $item) {
+                // dd($item);
+                $itemId = $item['itemid'];
+                $quantity = $item['qty'];
+
+
+                if (!array_key_exists($itemId, $carry)) {
+                    $carry[$itemId] = 0;
+                }
+
+                $carry[$itemId] += $quantity;
+
+                return $carry;
+            }, []);
+            // return json_encode($summarizedQtys);
+
+
+            $summarizedQtys = collect($summarizedQtys)->map(function ($val, $key) {
+                return ["itemid" => intval($key), "qty" => floatval($val)];
+            })->values(); // or array_values($summarizedQtys);
+
+
+            if ($req->type === 'S') {
+                foreach ($summarizedQtys as $k => $v) {
+                    //Sales Invoice Check If Quantity is available. In case of update to old invoice,
+                    //extract previous quantity from computation.
+                    $itemObj = tbl_items::where('stk_recid', $v['itemid'])->first();
+                    $invObj = tbl_invoicedetails::where([['ind_hid', '=', $req->id ? $req->id : -1], ['ind_stkid', '=', $v['itemid']]])->first();
+
+                    if ($itemObj->stk_qty + ($invObj ? $invObj->ind_qty : 0)  < $v['qty']) {
+                        return response('Requested Quantity For Item ' . $itemObj->stk_description .  'Exceeds Available Quantity', 400);
+                    }
+                }
+            }
+
+
+            $id = $req->id;
+            $invH = null;
+            $invDArr = [];
+            $now = new DateTime();
+            if (!$id) {
+                $invH = new tbl_invoiceheader();
+
+
+                $invH->inh_client = $req->client;
+                $invH->inh_type = $req->type;
+                $invH->inh_date =  $req->date;
+                $invH->inh_remarks = $req->remark;
+                $invH->inh_dstmp = $now->format("Y-m-d H:i:s");
+            } else {
+                $invH = tbl_invoiceheader::where('inh_recid', $req->id)->first();
+                $invH->inh_type = $req->type;
+                $invH->inh_date =  $req->date;
+                $invH->inh_remarks = $req->remark;
+                $invH->inh_dstmp = $now->format("Y-m-d H:i:s");
+            }
+            foreach ($summarizedQtys->toArray() as $k => $v) {
+                $invD = new tbl_invoicedetails();
+                $invD->ind_stkid = $v['itemid'];
+                $invD->ind_qty = $v['qty'];
+                $invD->ind_dstmp = $now->format("Y-m-d H:i:s");
+                $invDArr[] = ['detail' => $invD, 'previousQty' => 0];
+            }
+
+
+
+            DB::transaction(
+                function () use ($invH, $invDArr) {
+                    $invH->save();
+                    if ($invH->inh_recid) {
+                        tbl_invoicedetails::where('ind_hid', $invH->inh_recid)->delete();
+                    }
+
+                    foreach ($invDArr as $k => $v) {
+                        $detailObj = $v['detail'];
+                        $pvsqty = $v['previousQty'];
+                        $detailObj->ind_hid = $invH->inh_recid;
+
+                        $itemObj = tbl_items::where('stk_recid', $detailObj->ind_stkid)->first();
+                        if ($invH->inh_type === 'S') {
+                            $itemObj->stk_qty =  $itemObj->stk_qty +  $pvsqty - $detailObj->ind_qty;
+                        } else {
+                            $itemObj->stk_qty =  $itemObj->stk_qty -  $pvsqty + $detailObj->ind_qty;
+                        }
+                        $itemObj->save();
+                        $detailObj->save();
+                    }
+                }
+            );
+
+            return response("Saved Successfully", 200);
+
+            // return response($item, 200);
+        } catch (Throwable  | Exception $ex) {
+            return response('An error has occured.' . $ex->getMessage(), 400);
+        }
+    }
+
+    //
+    private function insertrules()
+    {
+        return [
+            'id' => ['sometimes', 'integer', 'gt:0'],
+
+            'client' => 'required|max:500',
+            'date' =>  ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/'],
+            'type' =>    ['required', Rule::in(['S', 'P'])],
+            'items' => ['required', 'array']
+        ];
+    }
+
+    private function itemdetailsrules()
+    {
+        return [
+            'itemid' => ['required', 'integer', 'gt:0'],
+            'qty' =>  ['required', 'decimal:0,2', 'gt:0'],
+
+        ];
+    }
+
+    private function globalMessages()
+    { //used to validate or inputs by using attributes placeholders
+        return [
+
+            'required' => 'The :attribute field Is Required',
+            'max.string' => 'The :attribute field must not be longer than :max characters.',
+            'id.integer' => ':attribute Value Must Be > 0',
+            'qty.decimal' => ':attribute Value Must Be > 0',
+            'regex.date' => 'The :attribute field must have the following format : "yyyy-mm-dd"',
+            'type.in' => 'The :attribute field must be "P" or "S"',
+        ];
+    }
+}
