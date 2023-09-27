@@ -69,7 +69,7 @@ class invoice extends Controller
                     $invObj = tbl_invoicedetails::where([['ind_hid', '=', $req->id ? $req->id : -1], ['ind_stkid', '=', $v['itemid']]])->first();
 
                     if ($itemObj->stk_qty + ($invObj ? $invObj->ind_qty : 0)  < $v['qty']) {
-                        return response('Requested Quantity For Item ' . $itemObj->stk_description .  'Exceeds Available Quantity', 400);
+                        return response('Requested Quantity For Item ' . $itemObj->stk_description .  ' Exceeds Available Quantity', 400);
                     }
                 }
             }
@@ -90,12 +90,13 @@ class invoice extends Controller
                 $invH->inh_dstmp = $now->format("Y-m-d H:i:s");
             } else {
                 $invH = tbl_invoiceheader::where('inh_recid', $req->id)->first();
+                $invH->inh_client = $req->client;
                 $invH->inh_type = $req->type;
                 $invH->inh_date =  $req->date;
                 $invH->inh_remarks = $req->remark;
                 $invH->inh_dstmp = $now->format("Y-m-d H:i:s");
             }
-            foreach ($summarizedQtys->toArray() as $k => $v) {
+            foreach ($summarizedQtys as $k => $v) {
                 $invD = new tbl_invoicedetails();
                 $invD->ind_stkid = $v['itemid'];
                 $invD->ind_qty = $v['qty'];
@@ -137,7 +138,7 @@ class invoice extends Controller
         }
     }
 
-    function getHeaders(Request $req)
+    function getInvoices(Request $req)
     {
         try {
             // return $req;
@@ -174,6 +175,70 @@ class invoice extends Controller
             });
             sleep(0.5);
             return $data;
+
+            // return $data->toSql();
+        } catch (Throwable  | Exception $ex) {
+            return response('An error has occured.' . $ex->getMessage(), 400);
+        }
+    }
+
+
+
+    function getDetails(Request $req)
+    {
+        try {
+            $valid = Validator::make($req->all(), ['invid' => ['required']], $this->globalMessages());
+            if ($valid->fails()) {
+                // dd($valid);
+                return response($valid->messages()->first(), 400);
+            }
+
+            $invid = $req->invid;
+
+            $invhead = tbl_invoiceheader::select("*")->where('inh_recid', $invid)->first();
+
+
+            $data = tbl_invoiceheader::select("*")
+                ->join('tbl_invoicedetails', 'inh_recid', 'ind_hid')
+                ->join('tbl_items', 'stk_recid', 'ind_stkid')
+                ->where('inh_recid', $invid);
+
+
+            // return [$data->toSql(), $data->getBindings()];
+            $data = $data->get();
+
+            $coll = collect($data);
+            // return $data;
+            // var_dump($coll);
+
+
+            $header = collect([$invhead])->map(function (string $val) {
+                $obj = json_decode($val);
+                $obj1 = new stdClass();
+                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $obj->inh_date);
+                $obj1->client = $obj->inh_client;
+                $obj1->date = $dt->format('Y-m-d');
+                $obj1->remark = $obj->inh_remarks;
+                return $obj1;
+            });
+
+            $details = $coll->map(function (string $val) {
+                $obj = json_decode($val);
+                $obj1 = new stdClass();
+                $obj1->id = $obj->stk_recid;
+                $obj1->serno = $obj->stk_serno;
+                $obj1->cat = $obj->stk_category;
+                $obj1->name = $obj->stk_description;
+                $obj1->qty = intval($obj->ind_qty);
+                $obj1->supp = $obj->stk_supplier;
+                return $obj1;
+            });
+
+            sleep(0.5);
+
+
+
+            return ['header' =>  $header[0], 'details' => $details];
 
             // return $data->toSql();
         } catch (Throwable  | Exception $ex) {

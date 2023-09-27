@@ -27,8 +27,8 @@ Route::get('items/deleteItem', [items::class, 'delete']);
 
 
 Route::post('invoice/upsert', [invoice::class, 'upsert']);
-Route::get('invoice/getinvoices', [invoice::class, 'getHeaders']);
-
+Route::get('invoice/getinvoices', [invoice::class, 'getInvoices']);
+Route::get('invoice/getInvDetails', [invoice::class, 'getDetails']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
