@@ -99,12 +99,13 @@ class invoice extends Controller
                 $pvsInvoice = tbl_invoicedetails::where('ind_hid', $req->id)->get();
                 $pvsInvoice = collect($pvsInvoice);
             }
+
             foreach ($summarizedQtys as $k => $v) {
                 $invD = new tbl_invoicedetails();
                 $invD->ind_stkid = $v['itemid'];
                 $invD->ind_qty = $v['qty'];
                 $invD->ind_dstmp = $now->format("Y-m-d H:i:s");
-                if ($pvsInvoice->count() > 0) {
+                if ($pvsInvoice && $pvsInvoice->count() > 0) {
                     $pvsItem = $pvsInvoice->filter(function ($row) use ($v) {
                         return $row['ind_stkid'] === $v['itemid'];
                     });
