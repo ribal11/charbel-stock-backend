@@ -79,6 +79,7 @@ class invoice extends Controller
             $invH = null;
             $invDArr = [];
             $now = new DateTime();
+            $pvsInvoice = null;
             if (!$id) {
                 $invH = new tbl_invoiceheader();
 
@@ -95,13 +96,23 @@ class invoice extends Controller
                 $invH->inh_date =  $req->date;
                 $invH->inh_remarks = $req->remark;
                 $invH->inh_dstmp = $now->format("Y-m-d H:i:s");
+                $pvsInvoice = tbl_invoicedetails::where('ind_hid', $req->id)->get();
+                $pvsInvoice = collect($pvsInvoice);
             }
             foreach ($summarizedQtys as $k => $v) {
                 $invD = new tbl_invoicedetails();
                 $invD->ind_stkid = $v['itemid'];
                 $invD->ind_qty = $v['qty'];
                 $invD->ind_dstmp = $now->format("Y-m-d H:i:s");
-                $invDArr[] = ['detail' => $invD, 'previousQty' => 0];
+                if ($pvsInvoice->count() > 0) {
+                    $pvsItem = $pvsInvoice->filter(function ($row) use ($v) {
+                        return $row['ind_stkid'] === $v['itemid'];
+                    });
+
+                    $invDArr[] = ['detail' => $invD, 'previousQty' => count($pvsItem) > 0 ? $pvsItem[0]['ind_qty'] : 0];
+                } else {
+                    $invDArr[] = ['detail' => $invD, 'previousQty' => 0];
+                }
             }
 
 
@@ -145,13 +156,18 @@ class invoice extends Controller
 
             $startDate = $req->strD ? $req->strD : (new DateTime())->format("Y-m-d");
             $endDate = $req->endD ? $req->endD : (new DateTime())->format("Y-m-d");
+            $type = $req->type;
 
 
 
             $startDate = Carbon::createFromFormat('Y-m-d', $startDate)->addYears(-1);
             $endDate = Carbon::createFromFormat('Y-m-d', $endDate);
 
-            $data = tbl_invoiceheader::select("*")->whereBetween('inh_date', [$startDate, $endDate]);
+            $data = tbl_invoiceheader::select("*")
+                ->whereBetween('inh_date', [$startDate, $endDate])
+                ->where('inh_type', DB::raw($type));
+
+            // return  [$data->toSql(), $data->getBindings()];
 
 
             // return [$data->toSql(), $data->getBindings()];

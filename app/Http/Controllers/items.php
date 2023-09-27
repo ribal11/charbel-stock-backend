@@ -69,12 +69,17 @@ class items extends Controller
         try {
 
             $item = $req->itemid;
+            $minqty = $req->minqty;
 
             $data = tbl_items::select('*');
 
             if ($item != null && $item != '') {
                 $data = $data->where('tbl_items.stk_recid', '=', $item);
             }
+            if ($minqty !== null) {
+                $data = $data->where('tbl_items.stk_qty', '<', $minqty);
+            }
+
             // return $data->toSql();
             $data = $data->get();
 
