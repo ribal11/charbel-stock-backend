@@ -80,6 +80,7 @@ class invoice extends Controller
             $invDArr = [];
             $now = new DateTime();
             $pvsInvoice = null;
+            $deletedEntries = [];
             if (!$id) {
                 $invH = new tbl_invoiceheader();
 
@@ -99,6 +100,16 @@ class invoice extends Controller
                 $pvsInvoice = tbl_invoicedetails::where('ind_hid', $req->id)->get();
                 $pvsInvoice = collect($pvsInvoice);
             }
+            if ($pvsInvoice && $pvsInvoice->count() > 0) {
+                foreach ($pvsInvoice as $k => $v) {
+                    if ($summarizedQtys->filter(function ($row) use ($v) {
+                        return $v['ind_stkid'] === $row['itemid'];
+                    })->count() === 0) {
+                        $deletedEntries[] = ["itemid" => $v['ind_stkid'], "qty" => $v['ind_qty']];
+                    }
+                }
+            }
+
 
             foreach ($summarizedQtys as $k => $v) {
                 $invD = new tbl_invoicedetails();
@@ -119,7 +130,7 @@ class invoice extends Controller
 
 
             DB::transaction(
-                function () use ($invH, $invDArr) {
+                function () use ($invH, $invDArr, $deletedEntries) {
                     $invH->save();
                     if ($invH->inh_recid) {
                         tbl_invoicedetails::where('ind_hid', $invH->inh_recid)->delete();
@@ -138,6 +149,17 @@ class invoice extends Controller
                         }
                         $itemObj->save();
                         $detailObj->save();
+                    }
+                    if (count($deletedEntries) > 0) {
+                        foreach ($deletedEntries as $k => $v) {
+                            $itemObj = tbl_items::where('stk_recid', $v['itemid'])->first();
+                            if ($invH->inh_type === 'S') {
+                                $itemObj->stk_qty = $itemObj->stk_qty + $v['qty'];
+                            } else {
+                                $itemObj->stk_qty = $itemObj->stk_qty - $v['qty'];
+                            }
+                            $itemObj->save();
+                        }
                     }
                 }
             );
