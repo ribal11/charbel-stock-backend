@@ -172,6 +172,7 @@ class invoice extends Controller
         }
     }
 
+
     function getInvoices(Request $req)
     {
         try {
@@ -285,6 +286,42 @@ class invoice extends Controller
         }
     }
 
+    function deleteInvoice (Request $req) {
+        try{
+            $valid = Validator::make($req->all(), $this->deleteInvoicerules(), $this->globalMessages());
+            if($valid->fails()){
+                return response($valid->messages()->first(), 400);
+            }
+
+            $id = $req->id;
+            $invDeletedDet = tbl_invoicedetails::where('ind_hid', $id)->get();
+            $invDeletedDet = collect($invDeletedDet);
+            DB::transaction(
+                function () use ($id, $invDeletedDet, $req) {                   
+                     tbl_invoicedetails::where('ind_hid', $id)->delete();
+                     tbl_invoiceheader::where('inh_recid', $id)->delete();  
+                     
+                     if($invDeletedDet->count() > 0) {
+                        foreach ($invDeletedDet as $k => $v) {
+                            $item = tbl_items::where('stk_recid', $v['ind_stkid'])->first();
+                            $qty = $v['ind_qty'];
+
+                            if($req->type === 'S') {
+                                $item->stk_qty += $qty;
+                            } else {
+                                $item->stk_qty -= $qty;
+                            }
+                            $item->save();
+                        }
+                     }
+                }
+            );
+            return response('Invoice deleted successfully', 200);
+        } catch(Throwable | Exception $ex) {
+            return response('An error has occured.' . $ex->getMessage(), 400);
+        }
+    }
+
     //
     private function insertrules()
     {
@@ -304,6 +341,14 @@ class invoice extends Controller
             'itemid' => ['required', 'integer', 'gt:0'],
             'qty' =>  ['required', 'decimal:0,2', 'gt:0'],
 
+        ];
+    }
+
+    private function deleteInvoicerules()
+    {
+        return [
+            'type' => ['required', Rule::in(['S', 'P'])],
+            'id' => ['required', 'integer', 'gt:0']
         ];
     }
 

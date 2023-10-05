@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Models\tbl_users;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Matching\ValidatorInterface;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
 
@@ -18,10 +19,9 @@ class login extends Controller
             sleep(0.5);
             $valid = Validator::make($req->all(), $this->insertrules(), $this->globalMessages());
             if ($valid->fails()) {
-                // dd($valid);
+               
                 return response($valid->messages()->first(), 400);
             }
-
 
 
             $user = tbl_users::where('user_code', $req->code)->first();
@@ -56,7 +56,8 @@ class login extends Controller
     private function globalMessages()
     { //used to validate or inputs by using attributes placeholders
         return [
-            'required' => 'The :attribute field Is Required',
+           
+            'password.string' => 'sdccsc'
         ];
     }
 }
