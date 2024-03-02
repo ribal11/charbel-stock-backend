@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('inh_client', 500);
             $table->string('inh_type', 1);
             $table->dateTime('inh_date');
-            $table->string('inh_remarks', 1000)->nullable();
+            $table->string('finished')->default("0");
             $table->dateTime('inh_dstmp');
         });
     }
