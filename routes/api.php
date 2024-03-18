@@ -24,7 +24,10 @@ Route::post('items/addItem', [items::class, 'insert']);
 Route::post('items/updateItem', [items::class, 'update']);
 Route::get('items/getItems', [items::class, 'get']);
 Route::get('items/deleteItem', [items::class, 'delete']);
-
+Route::post('items/allowUpdate', [items::class, 'allowUpdate']);
+Route::post('item/updateQuantity', [items::class, 'updateQty']);
+Route::post('items/updateAll', [items::class, 'updateAndAddDatabase']);
+Route::post('items/updateAllData', [items::class, 'updateDatabase']);
 
 Route::post('invoice/upsert', [invoice::class, 'upsert']);
 Route::post('invoice/upsertUpdate', [invoice::class, 'upsertUpdate']);
@@ -32,6 +35,7 @@ Route::get('invoice/getinvoices', [invoice::class, 'getInvoices']);
 Route::get('invoice/getInvDetails', [invoice::class, 'getDetails']);
 Route::post('invoice/deleteInvoice', [invoice::class, 'deleteInvoice']);
 Route::post('invoice/UpdateHeader', [invoice::class, 'updateHeader']);
+
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

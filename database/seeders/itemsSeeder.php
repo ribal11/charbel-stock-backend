@@ -22,7 +22,7 @@ class itemsSeeder extends Seeder
             $stk->stk_category =  $data['2'] != null ? $data['2'] : 'N/A';
             $stk->stk_description =  $data['3'] != null ? $data['3'] : 'N/A';
             $stk->stk_qty =  $data['1'] != null ? $data['1'] : 0;
-            $stk->stk_supplier = 'N/A';
+
 
             $stk->save();
         }

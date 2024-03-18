@@ -16,10 +16,19 @@ return new class extends Migration
             $table->engine = 'InnoDB';
             $table->id('stk_recid');
             $table->string('stk_serno', 100);
-            $table->string('stk_category', 100);
             $table->string('stk_description', 500);
             $table->integer('stk_qty');
-            $table->string('stk_supplier', 200);
+            $table->integer('stk_ordered')->default(0);
+            $table->integer('stock_reservation')->default(0);
+            $table->integer('three_month_sale')->default(0);
+            $table->integer('six_month_sale')->default(0);
+            $table->integer('one_year_sale')->default(0);
+            $table->string('minimum_stock_three_month')->default('to ne filled');
+            $table->string('minimum_stock_six_month')->default('to be filled');
+            $table->string('minimum_stock_year')->default('to be filled');
+            $table->string('purchase_Status')->default('allow');
+            $table->string('moq')->nullable()->default(null);
+            $table->string('allow_edit')->default(0);
         });
     }
 

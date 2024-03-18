@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('ind_hid');
             $table->unsignedBigInteger('ind_stkid');
             $table->decimal('ind_qty', 18, 2);
+            $table->integer('ind_reserve');
             $table->dateTime('ind_dstmp');
         });
     }
