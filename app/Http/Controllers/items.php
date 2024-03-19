@@ -171,35 +171,37 @@ class items extends Controller
             $data = Excel::toCollection([], $filePath);
 
             // Assuming the first row contains column headers, so we start from the second row
+
             $rows = json_decode($data[0]->slice(1), true);
 
             foreach ($rows as $row) {
                 // Check if the row is an array and not empty
                 if ($row[0] != null) {
 
-                    $record = tbl_items::where('stk_serno', $row[0]);
+                    $record = tbl_items::where('stk_serno', $row[0])->first();
 
                     if (!$record) {
                         $item = new tbl_items();
                         $item->stk_serno = $row[0] ?? null;
-                        $item->stk_description = $row[2]; // Assuming 'item' is the first column
-                        $item->stk_qty = $row[10] ?? null; // Assuming 'stock' is the second column
-                        $item->three_month_sale = $row[8] ?? null; // Assuming 'sales 3 months' is the third column
-                        $item->one_year_sale = $row[6] ?? null;
-                        if ($row[9] == null) {
+                        $item->stk_description = $row[1]; // Assuming 'item' is the first column
+                        $item->stk_qty = $row[2] ?? null; // Assuming 'stock' is the second column
+                        $item->three_month_sale = $row[3] ?? null; // Assuming 'sales 3 months' is the third column
+                        $item->one_year_sale = $row[5] ?? null;
+                        if ($row[4] == null) {
                             $item->six_month_sale = 0;
                         } else {
-                            $item->six_month_sale = $row[9];
+                            $item->six_month_sale = $row[4];
                         };
                         $item->save(); // Assuming 'Sales 1 Year' is the fourth column
                     } else {
-                        $record->stk_qty = $row[10] ?? null; // Assuming 'stock' is the second column
-                        $record->three_month_sale = $row[8] ?? null; // Assuming 'sales 3 months' is the third column
-                        $record->one_year_sale = $row[6] ?? null;
-                        if ($row[9] == null) {
+
+                        $record->stk_qty = $row[2] ?? null; // Assuming 'stock' is the second column
+                        $record->three_month_sale = $row[3] ?? null; // Assuming 'sales 3 months' is the third column
+                        $record->one_year_sale = $row[5] ?? null;
+                        if ($row[4] == null) {
                             $record->six_month_sale = 0;
                         } else {
-                            $record->six_month_sale = $row[9];
+                            $record->six_month_sale = $row[4];
                         };
                         // Assuming other fields exist in your Excel file and can be accessed similarly
                         // Add additional fields as needed
@@ -208,15 +210,14 @@ class items extends Controller
                         $record->save();
                     }
                 }
+            }
+            sleep(0.5);
 
-                sleep(0.5);
-
-                if (Storage::exists($filePath)) {
-                    return response($rows);
-                    Storage::delete($filePath);
-                } else {
-                    return response('does not exist');
-                }
+            if (Storage::exists($filePath)) {
+                return response('ok');
+                Storage::delete($filePath);
+            } else {
+                return response('does not exist');
             }
         } catch (Throwable | Exception $ex) {
             return response('An error has occurred: ' . $ex->getMessage(), 400);
@@ -243,31 +244,30 @@ class items extends Controller
                 // Check if the row is an array and not empty
                 if ($row[0] != null) {
 
-                    $record = tbl_items::where('stk_serno', $row[0]);
+                    $record = tbl_items::where('stk_serno', $row[0])->first();
 
 
                     if ($record) {
-                        $record->stk_qty = $row[10] ?? null;
-                        $record->three_month_sale = $row[8] ?? null;
-                        $record->one_year_sale = $row[6] ?? null;
-                        if ($row[9] == null) {
+                        $record->stk_qty = $row[2] ?? null;
+                        $record->three_month_sale = $row[3] ?? null;
+                        $record->one_year_sale = $row[5] ?? null;
+                        if ($row[4] == null) {
                             $record->six_month_sale = 0;
                         } else {
-                            $record->six_month_sale = $row[9];
+                            $record->six_month_sale = $row[4];
                         };
                     }
 
                     $record->save();
                 }
+            }
+            sleep(0.5);
 
-                sleep(0.5);
-
-                if (Storage::exists($filePath)) {
-                    return response($rows);
-                    Storage::delete($filePath);
-                } else {
-                    return response('does not exist');
-                }
+            if (Storage::exists($filePath)) {
+                return response($rows);
+                Storage::delete($filePath);
+            } else {
+                return response('does not exist');
             }
         } catch (Throwable | Exception $ex) {
             return response('An error has occurred: ' . $ex->getMessage(), 400);
